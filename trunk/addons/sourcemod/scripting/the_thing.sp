@@ -16,8 +16,10 @@ new Handle:hsm_thing_health;
 // enable switch
 new bool:g_Enabled = true;
 
-new int:g_Thing;
+new int:g_Thing = 1;
 new bool:g_IsSwitchedToThing = false;
+new String:g_ThingModel[101];
+
 public Plugin:myinfo =
 {
 	name = "THE THING",
@@ -64,7 +66,6 @@ public OnClientPostAdminCheck(client)
 		return Plugin_Handled;
 	
 	CPrintToChat(client, "Welcome to {red}THE THING{default}!");
-	
 	return Plugin_Handled;
 }
 
@@ -77,25 +78,39 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 	new int:clients = GetClientCount();
 	new int:thingIndex = GetRandomInt(1, clients);
 	g_Thing = GetClientUserId(thingIndex);
-	
-	for (new i = 1; i <= clients; i++)
+	GetClientModel(g_Thing, g_ThingModel, 101);
+	g_IsSwitchedToThing = false;
+	for (new client = 1; client <= clients; client++)
 	{
-		if (!IsClientConnected(i))
+		if (!IsClientConnected(client))
 		{
 			continue;
 		}
-		if (i == thingIndex)
+		if (client == thingIndex)
 		{
-			CPrintToChat(i, "You {green}are {red}THE THING{default}!\nYour objective is to kill everyone else without being discovered.");
-			PrintCenterText(i, "You are THE THING!");
-			PrintHintText(i, "Kill everyone without being discovered.");
+			CPrintToChat(client, "You {green}are {red}THE THING{default}!\nYour objective is to kill everyone else without being discovered.");
+			PrintCenterText(client, "You are THE THING!");
+			PrintHintText(client, "Kill everyone without being discovered.");
 		}
 		else
 		{
-			CPrintToChat(i, "You {green}are not {red}THE THING{default}!\nYour objective is to find and kill THE THING.");
-			PrintCenterText(i, "You are not THE THING!");
-			PrintHintText(i, "Find and kill THE THING.");
+			CPrintToChat(client, "You are {green}not {red}THE THING{default}!\nYour objective is to find and kill {red}THE THING{default}.");
+			PrintCenterText(client, "You are not THE THING!");
+			PrintHintText(client, "Find and kill THE THING.");
 		}
+
+		new iWeapon;
+		for(new i = CS_SLOT_PRIMARY; i <= CS_SLOT_C4; i++)
+		{
+			while((iWeapon = GetPlayerWeaponSlot(client, i)) != -1)
+			{
+				RemovePlayerItem(client, iWeapon);
+				RemoveEdict(iWeapon);
+			}
+		}
+		GivePlayerItem(client, "weapon_knife");	
+		GivePlayerItem(client, "weapon_usp");	
+		SetEntProp(client, Prop_Send, "m_ArmorValue", 100, 1);
 	}
 	
 	return Plugin_Handled;
@@ -105,6 +120,8 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	// logic for determining winner
 	// display who won, THE THING or everyone else.
+	
+	
 }
 
 public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
@@ -130,7 +147,7 @@ public Action:OnPlayerTeam(Handle:event, const String:name[], bool:dontBroadcast
 	
 	if(team == FindTeamByName("T"))
 	{
-		CS_SwitchTeam(GetClientOfUserId(GetEventInt(event, "userid")), FindTeamByName("C"));
+	//	CS_SwitchTeam(GetClientOfUserId(GetEventInt(event, "userid")), FindTeamByName("C"));
 	}
 	
 	return Plugin_Handled;
@@ -139,24 +156,57 @@ public Action:OnPlayerTeam(Handle:event, const String:name[], bool:dontBroadcast
 
 public Action:OnSwitchThing(client, args)
 {
-	if(client == g_Thing)
+	if(GetClientUserId(client) == g_Thing)
 	{
 		if(g_IsSwitchedToThing)
 		{
 			g_IsSwitchedToThing = false;
 			CPrintToChat(client, "You are now normal again.");
+			//SetEntProp(client, Prop_Data, "m_iMaxHealth", nHealth);
+			new health = GetClientHealth(client) / 4;
+			SetEntityHealth(client, health);
+			SetEntityHealth(client, health);
+			new iWeapon;
+			for(new i = CS_SLOT_PRIMARY; i <= CS_SLOT_C4; i++)
+			{
+				while((iWeapon = GetPlayerWeaponSlot(client, i)) != -1)
+				{
+					RemovePlayerItem(client, iWeapon);
+					RemoveEdict(iWeapon);
+				}
+			}
+			GivePlayerItem(client, "weapon_knife");	
+			GivePlayerItem(client, "weapon_usp");
+			SetEntData(client, FindSendPropOffs("CCSPlayer", "m_flLaggedMovementValue"), 1.0);
+			SetEntityModel(client, g_ThingModel);
 		}
 		else
 		{
 			g_IsSwitchedToThing = true;
 			CPrintToChat(client, "You have taken the form of {red}THE THING{default}!!!");
+			new health = GetClientHealth(client) * 4;
+			SetEntityHealth(client, health);
+			SetEntityHealth(client, health);
+			new iWeapon;
+			for(new i = CS_SLOT_PRIMARY; i <= CS_SLOT_C4; i++)
+			{
+				while((iWeapon = GetPlayerWeaponSlot(client, i)) != -1)
+				{
+					RemovePlayerItem(client, iWeapon);
+					RemoveEdict(iWeapon);
+				}
+			}
+			GivePlayerItem(client, "weapon_knife");	
+			GivePlayerItem(client, "weapon_usp");
 			GivePlayerItem(client, "weapon_ak47");
+			SetEntData(client, FindSendPropOffs("CCSPlayer", "m_flLaggedMovementValue"), 1.4);
+			
+			SetEntityModel(client, "npc_zombie");
 		}
 	}
 	else
 	{
 		CPrintToChat(client, "You are not {red}THE THING{default}!");
-		// RemovePlayerItem(client, "weapon_ak47"); how to?
 	}
 	
 	return Plugin_Handled;
