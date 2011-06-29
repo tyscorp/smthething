@@ -3,8 +3,9 @@
 #include <sourcemod>
 #include <cstrike>
 #include <sdktools>
+#include <colors>
 
-#define PLUGIN_VERSION "0.0.1"
+#define PLUGIN_VERSION "0.0.2"
 
 // ConVars
 new Handle:hsm_thing_enabled;
@@ -16,7 +17,7 @@ new Handle:hsm_thing_health;
 new bool:g_Enabled = true;
 
 new int:g_Thing;
-
+new bool:g_IsSwitchedToThing = false;
 public Plugin:myinfo =
 {
 	name = "THE THING",
@@ -43,7 +44,7 @@ public OnPluginStart()
 		HookEvent("player_team", OnPlayerTeam);
 	}
 	
-	RegConsoleCmd("sm_thing", OnSwitchThing, "Switches between THE THING and your normal self.");
+	RegConsoleCmd("sm_thing", OnSwitchThing);
 }
 
 /*
@@ -52,17 +53,19 @@ public OnPluginStart()
 public OnMapStart()
 {
 	if(!g_Enabled)
-		return;
+		return Plugin_Handled;
 	
-	
+	return Plugin_Handled;
 }
 
 public OnClientPostAdminCheck(client)
 {
 	if(!g_Enabled)
-		return;
+		return Plugin_Handled;
 	
-	PrintToChat(client, "Welcome to THE THING.");
+	CPrintToChat(client, "Welcome to {red}THE THING{default}!");
+	
+	return Plugin_Handled;
 }
 
 /*
@@ -83,17 +86,19 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		}
 		if (i == thingIndex)
 		{
-			PrintToChat(i, "You are THE THING!\nYour objective is to kill everyone else without being discovered.");
+			CPrintToChat(i, "You {green}are {red}THE THING{default}!\nYour objective is to kill everyone else without being discovered.");
 			PrintCenterText(i, "You are THE THING!");
 			PrintHintText(i, "Kill everyone without being discovered.");
 		}
 		else
 		{
-			PrintToChat(i, "You are not THE THING.\nYour objective is to find and kill THE THING.");
+			CPrintToChat(i, "You {green}are not {red}THE THING{default}!\nYour objective is to find and kill THE THING.");
 			PrintCenterText(i, "You are not THE THING!");
 			PrintHintText(i, "Find and kill THE THING.");
 		}
 	}
+	
+	return Plugin_Handled;
 }
 
 public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
@@ -114,6 +119,8 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	{
 		// say to everyone else that player X was killed
 	}
+	
+	return Plugin_Handled;
 }
 
 
@@ -123,8 +130,10 @@ public Action:OnPlayerTeam(Handle:event, const String:name[], bool:dontBroadcast
 	
 	if(team == FindTeamByName("T"))
 	{
-		CS_SwitchTeam(GetEventInt(event, "userid"), FindTeamByName("C"));
+		CS_SwitchTeam(GetClientOfUserId(GetEventInt(event, "userid")), FindTeamByName("C"));
 	}
+	
+	return Plugin_Handled;
 }
 
 
@@ -132,10 +141,23 @@ public Action:OnSwitchThing(client, args)
 {
 	if(client == g_Thing)
 	{
-		// switch shit here
+		if(g_IsSwitchedToThing)
+		{
+			g_IsSwitchedToThing = false;
+			CPrintToChat(client, "You are now normal again.");
+		}
+		else
+		{
+			g_IsSwitchedToThing = true;
+			CPrintToChat(client, "You have taken the form of {red}THE THING{default}!!!");
+			GivePlayerItem(client, "weapon_ak47");
+		}
 	}
 	else
 	{
-		PrintToChat(client, "You are not THE THING!");
+		CPrintToChat(client, "You are not {red}THE THING{default}!");
+		// RemovePlayerItem(client, "weapon_ak47"); how to?
 	}
+	
+	return Plugin_Handled;
 }
